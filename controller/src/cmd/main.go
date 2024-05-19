@@ -36,6 +36,7 @@ import (
 
 	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
 	"github.com/axodevelopment/ocp-virtualcluster/controller/internal/controller"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -48,6 +49,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(organizationv1.AddToScheme(scheme))
+	utilruntime.Must(kubevirtv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -122,7 +124,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.VirtualClusterReconciler{
+	if err = (&controller.VirtualMachineReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

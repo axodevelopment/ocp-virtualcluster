@@ -18,17 +18,18 @@ package controller
 
 import (
 	"context"
-
+	"errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 )
 
 // VirtualClusterReconciler reconciles a VirtualCluster object
-type VirtualClusterReconciler struct {
+type VirtualMachineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -46,16 +47,28 @@ type VirtualClusterReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
-func (r *VirtualClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger.Info("Reconcile: ")
+	logger.Info(req.String())
+
+	vm := &kubevirtv1.VirtualMachine{}
+
+	if err := r.Get(ctx, req.NamespacedName, vm); err != nil {
+		logger.Error(err, "Unable to r.Get VirtualMachine")
+		return ctrl.Result{}, err
+	}
+
+	for k, v := range vm.Labels {
+		logger.Info("Label: ", k, " ", v)
+	}
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VirtualClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VirtualMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&organizationv1.VirtualCluster{}).
 		Complete(r)

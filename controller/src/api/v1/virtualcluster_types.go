@@ -20,22 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// VirtualClusterSpec defines the desired state of VirtualCluster
 type VirtualClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of VirtualCluster. Edit virtualcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	VirtualMachines []string `json:"virtualMachines,omitempty"`
 }
 
-// VirtualClusterStatus defines the observed state of VirtualCluster
 type VirtualClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	//will use this later
 }
 
 //+kubebuilder:object:root=true
@@ -52,7 +42,6 @@ type VirtualCluster struct {
 
 //+kubebuilder:object:root=true
 
-// VirtualClusterList contains a list of VirtualCluster
 type VirtualClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
