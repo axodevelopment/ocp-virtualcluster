@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- organization_v1_virtualcluster.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
