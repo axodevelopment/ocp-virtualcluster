@@ -17,7 +17,10 @@ docker buildx create --use
 
 make docker-build docker-push IMG=docker.io/axodevelopment/virtualcluster:latest
 
-need to dig into makefile but will use buildx for now ( i am on arm need to be on amd64 when deploying to ocp)
+---
+
+## need to dig into makefile but will use buildx for now ( i am on arm need to be on amd64 when deploying to ocp)
+
 docker buildx build --platform linux/amd64,linux/arm64 -t docker.io/axodevelopment/virtualcluster:latest --push .
 
 creating and deploying docker secret
