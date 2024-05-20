@@ -4,6 +4,7 @@ Prototype of a virtualcluster
 
 #Process
 
+//should change prototypes.com to prototypes.io
 operator-sdk init --domain prototypes.com --repo github.com/axodevelopment/ocp-virtualcluster/controller
 
 operator-sdk create api --group organization --version v1 --kind VirtualCluster --resource --controller
@@ -12,4 +13,53 @@ go get kubevirt.io/client-go/kubecli@latest
 
 edited api/vq vc_types.go
 
-make docker-build docker-push IMG=docker.io/axodevelopment/src:latest
+make docker-build docker-push IMG=docker.io/axodevelopment/virtualcluster:latest
+
+need to dig into makefile but will use buildx for now ( i am on arm need to be on amd64 when deploying to ocp)
+docker buildx build --platform linux/amd64,linux/arm64 -t docker.io/axodevelopment/virtualcluster:latest --push .
+
+creating and deploying docker secret
+
+oc create secret docker-registry myregistrysecret \
+ --docker-server=docker.io \
+ --docker-username=myusername \
+ --docker-password=mypassword \
+ --docker-email=myemail@example.com
+
+oc secrets link default myregistrysecret --for=pull
+
+make install
+
+create sample testing_vs.yaml in config/samples
+
+oc apply -f config/samples/testing_vs.yaml
+
+oc get VirtualCluster <vcluster-name> -o yaml
+
+make deploy IMG=docker.io/axodevelopment/virtualcluster:latest
+
+need additional access to vm api because this controller is virtualcluster
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+name: virtualmachine-reader
+rules:
+
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachines"]
+  verbs: ["get", "list", "watch"]
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+name: virtualmachine-reader-binding
+subjects:
+
+- kind: ServiceAccount
+  name: src-controller-manager
+  namespace: src-system
+  roleRef:
+  kind: ClusterRole
+  name: virtualmachine-reader
+  apiGroup: rbac.authorization.k8s.io

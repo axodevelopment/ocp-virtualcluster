@@ -18,12 +18,13 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
+	//organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 )
 
@@ -55,12 +56,21 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	vm := &kubevirtv1.VirtualMachine{}
 
 	if err := r.Get(ctx, req.NamespacedName, vm); err != nil {
+		//TODO: this may not be true we should check if this is linked on the vc
+		/*
+			We need to handle things like
+			delete
+			scale up
+			scale down
+			live migration
+			etc
+		*/
 		logger.Error(err, "Unable to r.Get VirtualMachine")
 		return ctrl.Result{}, err
 	}
 
 	for k, v := range vm.Labels {
-		logger.Info("Label: ", k, " ", v)
+		logger.Info(fmt.Sprintf("Label: [%s][%s]", k, v))
 	}
 
 	return ctrl.Result{}, nil
@@ -69,6 +79,6 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // SetupWithManager sets up the controller with the Manager.
 func (r *VirtualMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&organizationv1.VirtualCluster{}).
+		For(&kubevirtv1.VirtualMachine{}).
 		Complete(r)
 }

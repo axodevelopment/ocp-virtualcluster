@@ -1,0 +1,5 @@
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: virtualcluster-juanjo
+spec:
