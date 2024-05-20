@@ -13,6 +13,8 @@ go get kubevirt.io/client-go/kubecli@latest
 
 edited api/vq vc_types.go
 
+docker buildx create --use
+
 make docker-build docker-push IMG=docker.io/axodevelopment/virtualcluster:latest
 
 need to dig into makefile but will use buildx for now ( i am on arm need to be on amd64 when deploying to ocp)

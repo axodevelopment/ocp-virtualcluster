@@ -19,12 +19,15 @@ package controller
 import (
 	"context"
 	"fmt"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	//organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
+	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 )
 
@@ -45,13 +48,25 @@ type VirtualMachineReconciler struct {
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
+// LOGIC:
+// We get a valid VM name / namespace 									!not we return nil //ignore
+// We find keyNameStringlabel
+//
+//	: we find matching cluster
+//	: : virtualcluster already has vm.name in it				update
+//	: : virtualcluster doesn't have a vm.name in it
+//	: we dont' find matching cluster
 func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
+
+	keyNameString := "organization/virtualcluster/name"
+	keyNamespaceString := "organization/virtualcluster/namespace"
+
+	//TODO: need to fix how to handle where VirtualClusters live
+	fixLaterNamespace := "operator-virtualcluster"
 
 	vm := &kubevirtv1.VirtualMachine{}
 
@@ -71,6 +86,45 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	for k, v := range vm.Labels {
 		logger.Info(fmt.Sprintf("Label: [%s][%s]", k, v))
+	}
+
+	keyNameValue, found := vm.Labels[keyNameString]
+	keyNamespaceValue, nsfound := vm.Labels[keyNamespaceString]
+
+	vc := &organizationv1.VirtualCluster{}
+
+	if found {
+		if !nsfound {
+			keyNamespaceValue = fixLaterNamespace
+		}
+
+		if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: keyNamespaceValue}, vc); err != nil {
+			if errors.IsNotFound(err) {
+				//TODO: not found so we need to create
+			}
+		} else {
+			//TODO: found cluster now need to see if vm is 'attached' or not, if not append
+			b := false
+
+			for _, kvm := range vc.Spec.VirtualMachines {
+				if kvm == vm.Name {
+					b = true
+					break
+				}
+			}
+
+			if !b {
+				vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines, vm.Name)
+
+				if err := r.Update(ctx, vc); err != nil {
+					logger.Error(err, "Failed to update the VirtualCluster")
+					//TODO: for now don't error return nil otherwise we could block the vm deployment
+					//return ctrl.Result{}, err
+					return ctrl.Result{}, nil
+				}
+			}
+
+		}
 	}
 
 	return ctrl.Result{}, nil
