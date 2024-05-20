@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,8 +54,8 @@ type VirtualMachineReconciler struct {
 // We find keyNameStringlabel
 //
 //	: we find matching cluster
-//	: : virtualcluster already has vm.name in it				update
-//	: : virtualcluster doesn't have a vm.name in it
+//	: : virtualcluster already has vm.name in it				ignore never err here to block vm deployment
+//	: : virtualcluster doesn't have a vm.name in it			append never err here to block vm deployment
 //	: we dont' find matching cluster
 func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -62,8 +63,8 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
 
-	keyNameString := "organization/virtualcluster/name"
-	keyNamespaceString := "organization/virtualcluster/namespace"
+	keyNameString := "organization/virtualcluster.name"
+	keyNamespaceString := "organization/virtualcluster.namespace"
 
 	//TODO: need to fix how to handle where VirtualClusters live
 	fixLaterNamespace := "operator-virtualcluster"
@@ -80,6 +81,8 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			live migration
 			etc
 		*/
+		//TODO: going to be hard to handle delete because I don't know how to get the labels of the deleted resource, i may need to create a lookup map
+		//  like a vcmap which i can use to get vm -> vc, granted this woudl be easier if i just used a db.,,
 		logger.Error(err, "Unable to r.Get VirtualMachine")
 		return ctrl.Result{}, err
 	}
@@ -93,40 +96,60 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	vc := &organizationv1.VirtualCluster{}
 
-	if found {
-		if !nsfound {
-			keyNamespaceValue = fixLaterNamespace
-		}
-
-		if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: keyNamespaceValue}, vc); err != nil {
-			if errors.IsNotFound(err) {
-				//TODO: not found so we need to create
-			}
-		} else {
-			//TODO: found cluster now need to see if vm is 'attached' or not, if not append
-			b := false
-
-			for _, kvm := range vc.Spec.VirtualMachines {
-				if kvm == vm.Name {
-					b = true
-					break
-				}
-			}
-
-			if !b {
-				vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines, vm.Name)
-
-				if err := r.Update(ctx, vc); err != nil {
-					logger.Error(err, "Failed to update the VirtualCluster")
-					//TODO: for now don't error return nil otherwise we could block the vm deployment
-					//return ctrl.Result{}, err
-					return ctrl.Result{}, nil
-				}
-			}
-
-		}
+	//TODO: for now we won't do anything if there is no label
+	//maybe in the future there will be a 'catch-all' vc?
+	if !found {
+		return ctrl.Result{}, nil
 	}
 
+	if !nsfound {
+		keyNamespaceValue = fixLaterNamespace
+	}
+
+	if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: keyNamespaceValue}, vc); err != nil {
+		if errors.IsNotFound(err) {
+			//TODO: not found so we need to create... for now
+			vc = &organizationv1.VirtualCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      keyNameValue,
+					Namespace: keyNamespaceValue,
+				},
+				Spec: organizationv1.VirtualClusterSpec{
+					VirtualMachines: []string{vm.Name},
+				},
+			}
+
+			if err := r.Create(ctx, vc); err != nil {
+				logger.Error(err, "Failed to create new VirtualCluster")
+				return ctrl.Result{}, nil //for now nil
+			}
+
+		}
+	} else {
+		//TODO: found cluster now need to see if vm is 'attached' or not, if not append
+		b := false
+
+		for _, kvm := range vc.Spec.VirtualMachines {
+			if kvm == vm.Name {
+				b = true
+				break
+			}
+		}
+
+		if !b {
+			vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines, vm.Name)
+
+			if err := r.Update(ctx, vc); err != nil {
+				logger.Error(err, "Failed to update the VirtualCluster")
+				//TODO: for now don't error return nil otherwise we could block the vm deployment
+				//return ctrl.Result{}, err
+				return ctrl.Result{}, nil
+			}
+		}
+
+	}
+
+	//UPDATE + CREATE success fall through to here FYI
 	return ctrl.Result{}, nil
 }
 
