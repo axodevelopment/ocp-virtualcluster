@@ -4,8 +4,8 @@ metadata:
   name: virtualmachine-reader-binding
 subjects:
 - kind: ServiceAccount
-  name: src-controller-manager
-  namespace: src-system
+  name: virtualcluster-controller-manager
+  namespace: virtualcluster-system
 roleRef:
   kind: ClusterRole
   name: virtualmachine-reader

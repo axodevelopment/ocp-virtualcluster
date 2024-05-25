@@ -1,5 +1,13 @@
 apiVersion: organization.prototypes.com/v1
 kind: VirtualCluster
 metadata:
-  name: virtualcluster-juanjo
+  name: vc-primary
+  namespace: operator-virtualcluster
+spec:
+---
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: vc-secondary
+  namespace: operator-virtualcluster
 spec:
