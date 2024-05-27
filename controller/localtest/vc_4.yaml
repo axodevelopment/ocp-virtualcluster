@@ -1,0 +1,10 @@
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: vc-region-east
+  namespace: virtualcluster-system
+  labels:
+    app: vc-region-east
+    region: east2
+    env: prod
+spec:

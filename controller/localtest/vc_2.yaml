@@ -1,0 +1,10 @@
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: vc-region-west
+  namespace: operator-virtualcluster
+  labels:
+    app: vc-region-west
+    region: west1
+    env: dev
+spec:

@@ -68,3 +68,17 @@ subjects:
   kind: ClusterRole
   name: virtualmachine-reader
   apiGroup: rbac.authorization.k8s.io
+
+# install
+
+make deploy IMG=docker.io/axodevelopment/virtualcluster:latest
+
+oc apply -f ./localtest/vm_crb.yaml
+
+oc apply -f ./localtest/vm_clusterrole.yaml
+
+oc apply -f ./config/samples/testing_vs.yaml # creates to types of virtual cluster in operator-virtualcluster namespace
+
+vm needs these labels
+keyNameString := "organization/virtualcluster.name"
+keyNamespaceString := "organization/virtualcluster.namespace"
