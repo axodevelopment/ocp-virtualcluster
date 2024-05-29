@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,7 +68,7 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	keyNamespaceString := "organization/virtualcluster.namespace"
 
 	//TODO: need to fix how to handle where VirtualClusters live
-	fixLaterNamespace := "operator-virtualcluster"
+	defaultNamespace := "operator-virtualcluster"
 
 	vm := &kubevirtv1.VirtualMachine{}
 
@@ -83,9 +84,37 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		*/
 		//TODO: going to be hard to handle delete because I don't know how to get the labels of the deleted resource, i may need to create a lookup map
 		//  like a vcmap which i can use to get vm -> vc, granted this woudl be easier if i just used a db.,,
+
+		if errors.IsNotFound(err) {
+			return r.handleVMDeletion(ctx, req.NamespacedName)
+		}
+
 		logger.Error(err, "Unable to r.Get VirtualMachine")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	//Just want to collect ready status of kubevirt.  It is likely we will need to wait on some changs based
+	//  upon the status of where KubeVirt is at in its on state management.
+	kubeVirtReady := false
+
+	for _, c := range vm.Status.Conditions {
+		if c.Type == "KubeVirtRead" && c.Status == "True" {
+			kubeVirtReady = true
+			break
+		}
+	}
+
+	fmt.Println("KubeVirtReady: ", kubeVirtReady)
+
+	//Keeping this commented until i need this, I am sure i do but feature inc.
+	//  I may even need this to supprot the vm node selectors we will see how that internally resolves.
+	//  in theory a new event should be requeued once we apply the change but i'll test this later
+	/*
+		if !kubeVirtReady {
+			logger.Info("KubeVirt controller has not completed its work yet, requeuing...")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+	*/
 
 	for k, v := range vm.Labels {
 		logger.Info(fmt.Sprintf("Label: [%s][%s]", k, v))
@@ -103,7 +132,7 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if !nsfound {
-		keyNamespaceValue = fixLaterNamespace
+		keyNamespaceValue = defaultNamespace
 	}
 
 	if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: keyNamespaceValue}, vc); err != nil {
@@ -115,29 +144,42 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					Namespace: keyNamespaceValue,
 				},
 				Spec: organizationv1.VirtualClusterSpec{
-					VirtualMachines: []string{vm.Name},
+					VirtualMachines: []organizationv1.VirtualMachineRef{
+						{
+							Name:      vm.Name,
+							Namespace: vm.Namespace,
+						},
+					},
 				},
 			}
 
 			if err := r.Create(ctx, vc); err != nil {
 				logger.Error(err, "Failed to create new VirtualCluster")
-				return ctrl.Result{}, nil //for now nil
+				return ctrl.Result{}, err //for now nil
 			}
 
+		} else {
+			//hmm
+			logger.Error(err, "Unable to get VirtualCluster")
+			return ctrl.Result{}, err
 		}
 	} else {
-		//TODO: found cluster now need to see if vm is 'attached' or not, if not append
+		//TODO: found vcluster now need to see if vm is 'attached' or not, if not append
 		b := false
 
 		for _, kvm := range vc.Spec.VirtualMachines {
-			if kvm == vm.Name {
+			if kvm.Name == vm.Name && kvm.Namespace == vm.Namespace {
 				b = true
 				break
 			}
 		}
 
+		//add the vm to the vc
 		if !b {
-			vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines, vm.Name)
+			vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines, organizationv1.VirtualMachineRef{
+				Name:      vm.Name,
+				Namespace: vm.Namespace,
+			})
 
 			if err := r.Update(ctx, vc); err != nil {
 				logger.Error(err, "Failed to update the VirtualCluster")
@@ -145,11 +187,77 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				//return ctrl.Result{}, err
 				return ctrl.Result{}, nil
 			}
-		}
 
+			fmt.Println("AC:")
+			fmt.Println(vc)
+			if vc.Spec.NodeSelector.Labels != nil {
+
+				for i := 0; i < 3; i++ {
+
+					if vm.Spec.Template.Spec.NodeSelector == nil {
+						vm.Spec.Template.Spec.NodeSelector = make(map[string]string)
+					}
+
+					for k, v := range vc.Spec.NodeSelector.Labels {
+						vm.Spec.Template.Spec.NodeSelector[k] = v
+					}
+
+					if err := r.Update(ctx, vm); err != nil {
+						if errors.IsConflict(err) {
+							logger.Error(err, "Failed to update NodeSelector for vm")
+							time.Sleep(100 * time.Millisecond)
+							continue
+						}
+
+						logger.Error(err, "Failed to update NodeSelector for vm")
+						return ctrl.Result{RequeueAfter: time.Second * 10}, err
+					}
+
+					break
+				}
+			}
+		}
 	}
 
 	//UPDATE + CREATE success fall through to here FYI
+	return ctrl.Result{}, nil
+}
+
+/*
+quick fix to remove vm's that have been deleted from the vc though its not full proof.  Need to test this a bit more
+*/
+func (r *VirtualMachineReconciler) handleVMDeletion(ctx context.Context, name types.NamespacedName) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	vcList := &organizationv1.VirtualClusterList{}
+
+	if err := r.List(ctx, vcList, client.InNamespace(name.Namespace)); err != nil {
+		logger.Error(err, "Unable to list VirtualClusters")
+		return ctrl.Result{}, err
+	}
+
+	//I probably need to think of adding a partitioned map or something,
+	//  ...if we have 100000 vms, while not individually slow can maybe present some scaling issue
+	for _, vc := range vcList.Items {
+		updated := false
+
+		for i, existingVM := range vc.Spec.VirtualMachines {
+			if existingVM.Name == name.Name && existingVM.Namespace == name.Namespace {
+				//append to slice up until i, everything after i
+				vc.Spec.VirtualMachines = append(vc.Spec.VirtualMachines[:i], vc.Spec.VirtualMachines[i+1:]...)
+				updated = true
+				break
+			}
+		}
+
+		if updated {
+			if err := r.Update(ctx, &vc); err != nil {
+				logger.Error(err, "Failed to update the VirtualCluster after VM deletion")
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 

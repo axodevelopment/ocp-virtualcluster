@@ -33,9 +33,24 @@ spec:
             type: object
           spec:
             properties:
+              nodeSelector:
+                properties:
+                  labels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
               virtualMachines:
                 items:
-                  type: string
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
                 type: array
             type: object
           status:

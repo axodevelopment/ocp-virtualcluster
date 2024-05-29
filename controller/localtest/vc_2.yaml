@@ -8,3 +8,6 @@ metadata:
     region: west1
     env: dev
 spec:
+  nodeSelector:
+    labels:
+      beta.kubernetes.io/arch: amd64
