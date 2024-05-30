@@ -11,3 +11,4 @@ spec:
   nodeSelector:
     labels:
       beta.kubernetes.io/arch: amd64
+      privatedata: all

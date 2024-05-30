@@ -8,3 +8,7 @@ metadata:
     region: east2
     env: prod
 spec:
+  nodeSelector:
+    labels:
+      beta.kubernetes.io/arch: amd64
+      gpushere: all
