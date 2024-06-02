@@ -20,18 +20,15 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
 )
 
 // VirtualClusterReconciler reconciles a VirtualCluster object
-type VirtualClusterReconciler struct {
+type NodeReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -50,66 +47,28 @@ type VirtualClusterReconciler struct {
 // LOGIC:
 //
 //	: Create
-//	:	+ Add label to each node
-//	: + Delete remove label from each node
-func (r *VirtualClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+//	:	+ When a Node is added we want to iterate over the vc's to add their labels to the node
+func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
 
-	labelKey := "organization/virtualcluster.name"
-	labelValue := req.Name
+	keyNameString := "organization/virtualcluster.name"
+	keyNamespaceString := "organization/virtualcluster.namespace"
 
 	//TODO: need to fix how to handle where VirtualClusters live
-	//defaultNamespace := "operator-virtualcluster"
+	defaultNamespace := "operator-virtualcluster"
 
-	vc := &organizationv1.VirtualCluster{}
-
-	if err := r.Get(ctx, req.NamespacedName, vc); err != nil {
-		logger.Error(err, "Unable to find VirtualCluster ")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	nodeList := &corev1.NodeList{}
-
-	if err := r.List(ctx, nodeList); err != nil {
-		logger.Error(err, "Somehow no nodes...")
-		return ctrl.Result{}, err
-	}
-
-	var updateErrors []error
-
-	for k := range nodeList.Items {
-		n := &nodeList.Items[k]
-
-		if n.ObjectMeta.Labels == nil {
-			n.ObjectMeta.Labels = make(map[string]string)
-		}
-
-		n.ObjectMeta.Labels[labelKey] = labelValue
-
-		logger.Info("Attempting to label node: " + n.Name)
-
-		if err := r.Update(ctx, n); err != nil {
-			logger.Error(err, "Unable to add label to node", "node", n.Name)
-			updateErrors = append(updateErrors, err)
-		} else {
-			logger.Info("Added Label to Node: " + n.Name)
-		}
-	}
-
-	if len(updateErrors) > 0 {
-		return ctrl.Result{}, fmt.Errorf("failed to update some nodes: %v", updateErrors)
-	}
+	fmt.Println("Values: ", keyNameString, " ", keyNamespaceString, " ", defaultNamespace)
 
 	//UPDATE + CREATE success fall through to here FYI
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VirtualClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&organizationv1.VirtualCluster{}).
+		For(&v1.Node{}).
 		Complete(r)
 }

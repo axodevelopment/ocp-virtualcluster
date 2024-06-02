@@ -22,8 +22,8 @@ import (
 )
 
 type VirtualClusterSpec struct {
-	VirtualMachines []VirtualMachineRef        `json:"virtualMachines,omitempty"`
-	NodeSelector    VirtualClusterNodeSelector `json:"nodeSelector,omitempty"`
+	VirtualMachines []VirtualMachineRef `json:"virtualMachines,omitempty"`
+	Nodes           []NodeRef           `json:"nodes,omitempty"`
 }
 
 type VirtualMachineRef struct {
@@ -31,12 +31,13 @@ type VirtualMachineRef struct {
 	Namespace string `json:"namespace"`
 }
 
-type VirtualClusterNodeSelector struct {
-	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,11,rep,name=labels"`
+type NodeRef struct {
+	Name string `json:"name"`
 }
 
 type VirtualClusterStatus struct {
 	//will use this later
+	Status string `json:"status"`
 }
 
 //+kubebuilder:object:root=true

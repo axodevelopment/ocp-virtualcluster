@@ -33,13 +33,15 @@ spec:
             type: object
           spec:
             properties:
-              nodeSelector:
-                properties:
-                  labels:
-                    additionalProperties:
+              nodes:
+                items:
+                  properties:
+                    name:
                       type: string
-                    type: object
-                type: object
+                  required:
+                  - name
+                  type: object
+                type: array
               virtualMachines:
                 items:
                   properties:
@@ -54,6 +56,12 @@ spec:
                 type: array
             type: object
           status:
+            properties:
+              status:
+                description: will use this later
+                type: string
+            required:
+            - status
             type: object
         type: object
     served: true

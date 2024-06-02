@@ -1,0 +1,21 @@
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: vc-region-east
+  namespace: virtualcluster-system
+  labels:
+    app: vc-region-east
+    region: east2
+    env: prod
+spec:
+  nodes:
+    - name: node1
+    - name: node2
+    - name: node3
+  virtualMachines:
+  - name: fedora-202
+    namespace: virtualcluster-system
+  - name: fedora-401
+    namespace: virtualcluster-system
+  - name: fedora-103
+    namespace: virtualcluster-system
