@@ -22,7 +22,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -58,17 +57,20 @@ func (r *VirtualClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
 
-	labelKey := "organization/virtualcluster.name"
-	labelValue := req.Name
-
-	//TODO: need to fix how to handle where VirtualClusters live
-	//defaultNamespace := "operator-virtualcluster"
+	//labelKey := "organization/virtualcluster.name"
 
 	vc := &organizationv1.VirtualCluster{}
 
 	if err := r.Get(ctx, req.NamespacedName, vc); err != nil {
 		logger.Error(err, "Unable to find VirtualCluster ")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	labelKey, labelValue := GetAppliedSelectorLabelKeyValue(ctx, vc)
+
+	if vc.Namespace != DefaultNamespace {
+		logger.Info("VirtualCluster should be in: " + DefaultNamespace + " not located in: " + vc.Namespace + " ignoring")
+		return ctrl.Result{}, nil
 	}
 
 	nodeList := &corev1.NodeList{}

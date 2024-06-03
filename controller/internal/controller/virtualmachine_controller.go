@@ -65,12 +65,6 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
 
-	keyNameString := "organization/virtualcluster.name"
-	keyNamespaceString := "organization/virtualcluster.namespace"
-
-	//TODO: need to fix how to handle where VirtualClusters live
-	defaultNamespace := "operator-virtualcluster"
-
 	vm := &kubevirtv1.VirtualMachine{}
 
 	if err := r.Get(ctx, req.NamespacedName, vm); err != nil {
@@ -121,8 +115,7 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		logger.Info(fmt.Sprintf("Label: [%s][%s]", k, v))
 	}
 
-	keyNameValue, found := vm.Labels[keyNameString]
-	keyNamespaceValue, nsfound := vm.Labels[keyNamespaceString]
+	keyNameValue, found := vm.Labels[LabelKeyPart]
 
 	vc := &organizationv1.VirtualCluster{}
 
@@ -132,17 +125,13 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	if !nsfound {
-		keyNamespaceValue = defaultNamespace
-	}
-
-	if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: keyNamespaceValue}, vc); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: DefaultNamespace}, vc); err != nil {
 		if errors.IsNotFound(err) {
 			//TODO: not found so we need to create... for now
 			vc = &organizationv1.VirtualCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keyNameValue,
-					Namespace: keyNamespaceValue,
+					Namespace: DefaultNamespace,
 				},
 				Spec: organizationv1.VirtualClusterSpec{
 					VirtualMachines: []organizationv1.VirtualMachineRef{
@@ -189,16 +178,17 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				return ctrl.Result{}, nil
 			}
 
+			labelKey, labelValue := GetAppliedSelectorLabelKeyValue(ctx, vc)
 			logger.Info("Applying NodeSelector To VM " + vm.Name)
 
 			vm.Spec.Template.Spec.NodeSelector = make(map[string]string)
-			vm.Spec.Template.Spec.NodeSelector[keyNameString] = vc.Name
+			vm.Spec.Template.Spec.NodeSelector[labelKey] = labelValue
 
 			for i := 0; i < 3; i++ {
 				if err := r.Update(ctx, vm); err != nil {
 					if errors.IsConflict(err) {
 						logger.Info("Going to retry updating NodeSelector on VM " + vm.Name)
-						time.Sleep(100 * time.Second)
+						time.Sleep(RetryInterval)
 						continue
 					}
 
@@ -209,35 +199,6 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				logger.Info("Updated NodeSelector on VM " + vm.Name)
 				break
 			}
-
-			//TODO: For now not going to add more nodeselector
-			/*
-				if vc.Spec.NodeSelector.Labels != nil {
-
-					for i := 0; i < 3; i++ {
-
-						if vm.Spec.Template.Spec.NodeSelector == nil {
-							vm.Spec.Template.Spec.NodeSelector = make(map[string]string)
-						}
-
-						for k, v := range vc.Spec.NodeSelector.Labels {
-							vm.Spec.Template.Spec.NodeSelector[k] = v
-						}
-
-						if err := r.Update(ctx, vm); err != nil {
-							if errors.IsConflict(err) {
-								logger.Error(err, "Failed to update NodeSelector for vm")
-								time.Sleep(100 * time.Millisecond)
-								continue
-							}
-
-							logger.Error(err, "Failed to update NodeSelector for vm")
-							return ctrl.Result{RequeueAfter: time.Second * 10}, err
-						}
-
-						break
-					}
-				} */
 		}
 	}
 

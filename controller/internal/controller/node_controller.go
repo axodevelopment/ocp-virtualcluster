@@ -20,7 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
+	organizationv1 "github.com/axodevelopment/ocp-virtualcluster/controller/api/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,13 +55,57 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger.Info("Reconcile: ")
 	logger.Info(req.String())
 
-	keyNameString := "organization/virtualcluster.name"
-	keyNamespaceString := "organization/virtualcluster.namespace"
+	//keyNameString := "organization/virtualcluster.name"
+	//defaultNamespace := "operator-virtualcluster"
 
-	//TODO: need to fix how to handle where VirtualClusters live
-	defaultNamespace := "operator-virtualcluster"
+	node := &corev1.Node{}
 
-	fmt.Println("Values: ", keyNameString, " ", keyNamespaceString, " ", defaultNamespace)
+	if err := r.Get(ctx, req.NamespacedName, node); err != nil {
+		logger.Error(err, "Unable to find Node")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	vcl := &organizationv1.VirtualClusterList{}
+
+	if err := r.List(ctx, vcl); err != nil {
+		logger.Error(err, "Unable to list VirtualClusters")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if len(vcl.Items) > 0 {
+		logger.Info("No vcl's discovered so no labels to apply")
+		return ctrl.Result{}, nil
+	}
+
+	var updateErrors []error
+
+	for k := range vcl.Items {
+		vc := &vcl.Items[k]
+
+		if node.ObjectMeta.Labels == nil {
+			node.ObjectMeta.Labels = make(map[string]string)
+		}
+
+		labelKey, labelValue := GetAppliedSelectorLabelKeyValue(ctx, vc)
+
+		if node.ObjectMeta.Labels[labelKey] == labelValue {
+			logger.Info("Label already exists we can skip updating")
+			continue
+		}
+
+		node.ObjectMeta.Labels[labelKey] = labelValue
+
+		if err := r.Update(ctx, node); err != nil {
+			logger.Error(err, "Unable to add label to node", "node", node.Name)
+			updateErrors = append(updateErrors, err)
+		} else {
+			logger.Info("Added Label to Node: " + node.Name)
+		}
+	}
+
+	if len(updateErrors) > 0 {
+		return ctrl.Result{}, fmt.Errorf("failed to update some nodes: %v", updateErrors)
+	}
 
 	//UPDATE + CREATE success fall through to here FYI
 	return ctrl.Result{}, nil
@@ -69,6 +114,6 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1.Node{}).
+		For(&corev1.Node{}).
 		Complete(r)
 }
