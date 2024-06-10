@@ -99,6 +99,31 @@ func (r *VirtualClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		} else {
 			logger.Info("Added Label to Node: " + n.Name)
 		}
+
+		if vc.Spec.Nodes == nil {
+			vc.Spec.Nodes = make([]organizationv1.NodeRef, 0)
+		}
+
+		nodeExists := false
+
+		for _, ref := range vc.Spec.Nodes {
+			if ref.Name == n.Name {
+				nodeExists = true
+				break
+			}
+		}
+
+		if !nodeExists {
+			vc.Spec.Nodes = append(vc.Spec.Nodes, organizationv1.NodeRef{Name: n.Name})
+
+			if err := r.Update(ctx, vc); err != nil {
+				logger.Info(vc.Name)
+				logger.Error(err, "Unable to add node name to vc", "node", n.Name)
+				updateErrors = append(updateErrors, err)
+			} else {
+				logger.Info("Added node to Node: " + n.Name)
+			}
+		}
 	}
 
 	if len(updateErrors) > 0 {

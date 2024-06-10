@@ -3,102 +3,91 @@ kind: ClusterRole
 metadata:
   name: virtualmachine-reader
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - services
-      - endpoints
-      - persistentvolumeclaims
-      - events
-      - configmaps
-      - secrets
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-      - daemonsets
-      - replicasets
-      - statefulsets
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - servicemonitors
-    verbs:
-      - get
-      - create
-  - apiGroups:
-      - apps
-    resourceNames:
-      - virtualcluster-controller-manager
-    resources:
-      - deployments/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - pods/exec
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachines
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - organization.prototypes.com
-    resources:
-      - virtualclusters
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - organization.prototypes.com
-    resources:
-      - virtualclusters/status
-    verbs:
-      - get
-      - update
-      - patch
-  - apiGroups:
-      - organization.prototypes.com
-    resources:
-      - virtualclusters/finalizers
-    verbs:
-      - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  - nodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
+- apiGroups:
+  - apps
+  resourceNames:
+  - virtualcluster-controller-manager
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/exec
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kubevirt.io
+  resources:
+  - virtualmachines
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - organization.prototypes.com
+  resources:
+  - virtualclusters
+  - virtualclusters/status
+  - virtualclusters/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete

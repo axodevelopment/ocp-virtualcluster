@@ -71,8 +71,7 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		//TODO: this may not be true we should check if this is linked on the vc
 		/*
 			We need to handle things like
-			delete
-			scale up
+			* delete
 			scale down
 			live migration
 			etc
@@ -127,7 +126,8 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err := r.Get(ctx, types.NamespacedName{Name: keyNameValue, Namespace: DefaultNamespace}, vc); err != nil {
 		if errors.IsNotFound(err) {
-			//TODO: not found so we need to create... for now
+			//TODO: not found so we need to create... for now maybe we shoudln't do thisbut for now its ok
+
 			vc = &organizationv1.VirtualCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keyNameValue,
@@ -173,15 +173,17 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 			if err := r.Update(ctx, vc); err != nil {
 				logger.Error(err, "Failed to update the VirtualCluster")
-				//TODO: for now don't error return nil otherwise we could block the vm deployment
 				//return ctrl.Result{}, err
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			labelKey, labelValue := GetAppliedSelectorLabelKeyValue(ctx, vc)
 			logger.Info("Applying NodeSelector To VM " + vm.Name)
 
-			vm.Spec.Template.Spec.NodeSelector = make(map[string]string)
+			if vm.Spec.Template.Spec.NodeSelector == nil {
+				vm.Spec.Template.Spec.NodeSelector = make(map[string]string)
+			}
+
 			vm.Spec.Template.Spec.NodeSelector[labelKey] = labelValue
 
 			for i := 0; i < 3; i++ {

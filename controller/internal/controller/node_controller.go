@@ -72,7 +72,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if len(vcl.Items) > 0 {
+	if len(vcl.Items) == 0 {
 		logger.Info("No vcl's discovered so no labels to apply")
 		return ctrl.Result{}, nil
 	}
@@ -101,13 +101,39 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		} else {
 			logger.Info("Added Label to Node: " + node.Name)
 		}
+
+		if vc.Spec.Nodes == nil {
+			vc.Spec.Nodes = make([]organizationv1.NodeRef, 0)
+		}
+
+		nodeExists := false
+
+		for _, ref := range vc.Spec.Nodes {
+			if ref.Name == node.Name {
+				nodeExists = true
+				break
+			}
+		}
+
+		if !nodeExists {
+			vc.Spec.Nodes = append(vc.Spec.Nodes, organizationv1.NodeRef{Name: node.Name})
+
+			if err := r.Update(ctx, vc); err != nil {
+				logger.Info(vc.Name)
+				logger.Error(err, "Unable to add node name to vc", "node", node.Name)
+				updateErrors = append(updateErrors, err)
+			} else {
+				logger.Info("Added node to Node: " + node.Name)
+			}
+		}
+
 	}
 
 	if len(updateErrors) > 0 {
 		return ctrl.Result{}, fmt.Errorf("failed to update some nodes: %v", updateErrors)
 	}
 
-	//UPDATE + CREATE success fall through to here FYI
+	//UPDATE + CREATE success fall through to here
 	return ctrl.Result{}, nil
 }
 

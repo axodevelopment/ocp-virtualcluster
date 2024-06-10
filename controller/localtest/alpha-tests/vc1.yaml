@@ -1,0 +1,9 @@
+apiVersion: organization.prototypes.com/v1
+kind: VirtualCluster
+metadata:
+  name: vc-primary
+  namespace: virtualcluster-system
+  labels:
+    cc: me
+    region: us-east
+    env: production

@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: docker.io/axodevelopment/virtualcluster
-  newTag: v1.0.c
+  newTag: alpha-v1.0.3

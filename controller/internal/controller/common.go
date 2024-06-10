@@ -10,7 +10,8 @@ import (
 const (
 	LabelKeyPart string = "organization/virtualcluster.name"
 	//LabelKeyNSPart   string = "organization/virtualcluster.namespace"
-	DefaultNamespace string = "operator-virtualcluster"
+	//DefaultNamespace string = "operator-virtualcluster"
+	DefaultNamespace string = "virtualcluster-system"
 	NodeLabelKeyPart string = "organization/virtualcluster."
 	RetryInterval           = 100 * time.Second
 )
