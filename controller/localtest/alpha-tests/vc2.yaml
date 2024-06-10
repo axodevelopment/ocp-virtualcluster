@@ -6,4 +6,4 @@ metadata:
   labels:
     cc: me
     region: us-east
-    env: production
+    env: productions
