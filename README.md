@@ -43,6 +43,9 @@ oc get VirtualCluster <vcluster-name> -o yaml
 
 make deploy IMG=docker.io/axodevelopment/virtualcluster:latest
 
+# NOTE
+Latest is make deploy IMG=docker.io/axodevelopment/virtualcluster:alpha-v1.0.3
+
 need additional access to vm api because this controller is virtualcluster
 
 apiVersion: rbac.authorization.k8s.io/v1
