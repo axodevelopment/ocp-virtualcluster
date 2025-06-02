@@ -9,9 +9,7 @@ metadata:
     env: prod
 spec:
   nodes:
-    - name: node1
-    - name: node2
-    - name: node3
+    - name: 24-6e-96-b1-76-54
   virtualMachines:
   - name: fedora-202
     namespace: virtualcluster-system

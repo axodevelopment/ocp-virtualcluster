@@ -1,13 +1,12 @@
-/*** DO NOT USE
 apiVersion: organization.prototypes.com/v1
 kind: VirtualCluster
 metadata:
   name: vc-region-east
-  namespace: operator-virtualcluster
+  namespace: virtualcluster-system
   labels:
     app: vc-region-east
     region: east2
-    env: uat
+    env: prod
 spec:
-
-****/
+  nodes:
+    - name: "24-6e-96-b1-76-54"

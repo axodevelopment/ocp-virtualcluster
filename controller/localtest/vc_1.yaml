@@ -1,6 +1,0 @@
-apiVersion: organization.prototypes.com/v1
-kind: VirtualCluster
-metadata:
-  name: vc-primary
-  namespace: operator-virtualcluster
-spec:

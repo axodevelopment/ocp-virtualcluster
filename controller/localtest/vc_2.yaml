@@ -1,3 +1,5 @@
+/*** DO NOT USE
+
 apiVersion: organization.prototypes.com/v1
 kind: VirtualCluster
 metadata:
@@ -12,3 +14,5 @@ spec:
     labels:
       beta.kubernetes.io/arch: amd64
       privatedata: all
+
+      ***/
